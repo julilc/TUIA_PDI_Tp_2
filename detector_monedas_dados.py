@@ -44,6 +44,7 @@ def adjust_hsv_image_with_lightness_and_threshold(img, scale=0.5):
     resized_img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
     hsv_img = cv2.cvtColor(resized_img, cv2.COLOR_BGR2HSV)
 
+    
     hsv_img = cv2.blur(hsv_img, (15, 15))  # Aplicamos un suavizado para evitar ruidos
 
     # Crear ventana para la imagen modificada y su versión binarizada
@@ -84,7 +85,7 @@ def adjust_hsv_image_with_lightness_and_threshold(img, scale=0.5):
         modified_hsv[:, :, 2] = np.clip(hsv_img[:, :, 2] + v, 0, 255)  # Value
 
         # Aplicar ajuste de Lightness sobre el canal Value (V), asegurándose de no exceder los límites
-        modified_hsv[:, :, 2] = np.clip(modified_hsv[:, :, 2] + l, 0, 255)  # Modificar solo el valor (V)
+        modified_hsv[:, :, 2] = np.clip(cv2.blur(modified_hsv[:, :, 2] + l, (5,5)), 0, 255)  # Modificar solo el valor (V)
 
         # Convertir la imagen modificada de HSV a BGR
         modified_bgr = cv2.cvtColor(modified_hsv, cv2.COLOR_HSV2BGR)
