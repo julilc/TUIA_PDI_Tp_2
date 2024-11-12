@@ -79,7 +79,7 @@ def adjust_hsv_image_with_lightness_and_threshold(img, scale=0.5):
         modified_hsv[:, :, 0] = np.clip(hsv_img[:, :, 0] + h, 0, 179)  # Hue
 
         # Ajuste de Saturation, asegurándose de que esté dentro del rango [0, 255]
-        modified_hsv[:, :, 1] = np.clip(hsv_img[:, :, 1] + s, 0, 255)  # Saturation
+        modified_hsv[:, :, 1] = np.clip(cv2.blur(hsv_img[:, :, 1] + s , (5,5)), 0, 255)  # Saturation
 
         # Ajuste de Value, asegurándose de que esté dentro del rango [0, 255]
         modified_hsv[:, :, 2] = np.clip(hsv_img[:, :, 2] + v, 0, 255)  # Value
@@ -125,7 +125,7 @@ def adjust_hsv_image_with_lightness_and_threshold(img, scale=0.5):
 mod_bgr , thr_img = adjust_hsv_image_with_lightness_and_threshold(img_1)
 
 #### Llegamos a que los valore más óptimos son:
-### hue 40, sat 18, v 9, l = 53, tr = 43
+### hue 40, sat 18, v 9, l = 53 /**64/ 70, tr = 43
 #### Obtenemos imagenes con dichos valores
 
 ### Dilatar y erosionar
@@ -136,11 +136,11 @@ imshow(thr_img)
 ### que no forma parte ni de una moneda ni de un dado
 
 s = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
-img_close = cv2.morphologyEx(thr_img.copy(), cv2.MORPH_ERODE, s, iterations=1)
-img_dil = cv2.morphologyEx(img_close.copy(), cv2.MORPH_close, s, iterations=1)
+img_close = cv2.morphologyEx(thr_img.copy(), cv2.MORPH_ERODE, s, iterations=15)
+img_dil = cv2.morphologyEx(img_close.copy(), cv2.MORPH_CLOSE, s, iterations=1)
 imshow(img_dil)
 ## Aplicamos un blur que servirá a la hora de detectar círculos.
-blur_th = cv2.blur(img_close.copy(), (3,3))
+blur_th = cv2.blur(img_dil.copy(), (25,25))
 imshow(blur_th)
 
 
@@ -189,51 +189,26 @@ def find_and_draw_circles(thresh_image, dp_ = 1.2, minD = 30, p1 = 50, p2 = 100,
 
 # Ejemplo de uso:
 # Asumiendo que ya tienes la imagen binarizada 'thresh_image' de la función anterior:
-result_image, circles = find_and_draw_circles(blur_th,p1 = 1, p2 = 29, minR=41, minD=50, maxR=100)
+result_image, circles = find_and_draw_circles(blur_th,p1 = 20, p2 = 50, minR=60, minD=170, maxR=100)
 
 ## Función para encontrar Cuadrados
 
+img_canny = cv2.Canny(thr_img.copy(), 1, 1)
 
-def encontrar_cuadrados(img: np.array, min_area: int = 1000, th_canny_1: int = 50, th_canny_2: int = 150) -> np.array:
-    # Convertir a escala de grises si la imagen es en color
-    if len(img.shape) == 3:
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    else:
-        gray = img
+# Muestra la imagen con bordes detectados
+imshow(img_canny)
 
-    # Aplicar Canny para detectar bordes
-    bordes = cv2.Canny(gray, th_canny_1, th_canny_2)
-
-    # Encontrar contornos
-    contornos, _ = cv2.findContours(bordes, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    squares = []
-    for contour in contornos:
-        # Aproximar el contorno
-        epsilon = 0.01 * cv2.arcLength(contour, True)
-        approx = cv2.approxPolyDP(contour, epsilon, True)
-
-        # Verificar que el contorno tiene 4 vértices y es convexo
-        if len(approx) == 4 and cv2.isContourConvex(approx):
-            # Calcular el área y verificar si es suficientemente grande
-            area = cv2.contourArea(approx)
-            if area > min_area:
-               squares.append(approx)
-
-    # Dibujar los cuadrados detectados en la imagen original
-    img_draw = img.copy()
-    for square in squares:
-        cv2.drawContours(img_draw, [square], -1, (0, 255, 0), 3)
-
-    imshow(img_draw)
+C = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
+canny_close = cv2.morphologyEx(img_canny, cv2.MORPH_CLOSE, C, iterations=4)
+imshow(canny_close)
+# O = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
+# canny_open = cv2.morphologyEx(canny_close, cv2.MORPH_OPEN, O)
+# imshow(canny_open)
 
 
-# Aplicar cierre para rellenar los cuadrados
-kernel = np.ones((5, 5), np.uint8)  # Tamaño del kernel ajustable
-closing = cv2.morphologyEx(thr_img.copy(), cv2.MORPH_CLOSE, kernel, iterations=3)
-open = cv2.morphologyEx(thr_img.copy(), cv2.MORPH_ERODE, kernel, iterations=3)
-imshow(open)
-# Aplicar Canny para detectar bordes
-bordes = cv2.Canny(open, 1,1)
-imshow(bordes)
-encontrar_cuadrados(open, min_area = 10, th_canny_1 = 1, th_canny_2 = 1)
+
+# Detectar contornos
+contornos, _ = cv2.findContours(canny_close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+img_draw = cv2.cvtColor(canny_close.copy(), cv2.COLOR_GRAY2BGR)  # Convertir a BGR para dibujar en color
+cv2.drawContours(img_draw.copy(),contornos, -1, color = (255,0,0),thickness=3)
+imshow(img_draw)
