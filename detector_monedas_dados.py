@@ -189,26 +189,100 @@ def find_and_draw_circles(thresh_image, dp_ = 1.2, minD = 30, p1 = 50, p2 = 100,
 
 # Ejemplo de uso:
 # Asumiendo que ya tienes la imagen binarizada 'thresh_image' de la función anterior:
-result_image, circles = find_and_draw_circles(blur_th,p1 = 20, p2 = 50, minR=60, minD=170, maxR=100)
+result_image, monedas = find_and_draw_circles(blur_th,p1 = 20, p2 = 50, minR=60, minD=170, maxR=100)
 
-## Función para encontrar Cuadrados
+def encontrar_cuadrados(img: np.array)-> list:
+    C = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (17,17))
+    canny_open = cv2.morphologyEx(img.copy(), cv2.MORPH_OPEN, C, iterations=2)
+    imshow(canny_open)
+    C = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7))
+    canny_close = cv2.morphologyEx(canny_open.copy(), cv2.MORPH_ERODE, C, iterations=1)
+    imshow(canny_close)
 
-img_canny = cv2.Canny(thr_img.copy(), 1, 1)
+    # Detectar bordes con Canny
+    edges = cv2.Canny(canny_close, 10, 150)
 
-# Muestra la imagen con bordes detectados
-imshow(img_canny)
+    imshow(edges)
 
-C = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
-canny_close = cv2.morphologyEx(img_canny, cv2.MORPH_CLOSE, C, iterations=4)
-imshow(canny_close)
-# O = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
-# canny_open = cv2.morphologyEx(canny_close, cv2.MORPH_OPEN, O)
-# imshow(canny_open)
+    # Encontrar contornos
+    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    draw_img = cv2.cvtColor(thr_img.copy(), cv2.COLOR_GRAY2BGR)
+    cuadrados = []
+    # Procesar cada contorno
+    for contour in contours:
+        # Aproximar el contorno para simplificarlo
+        epsilon = 0.02 * cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, epsilon, True)
+        area = cv2.contourArea(contour)
+        p = cv2.arcLength(contour, True)
+        fp = area / (p**2)
+
+        if area < 6000:
+            continue
+
+        # Clasificar la forma en función del número de lados
+        if 0.06<fp<0.08:
+            shape = "Círculo"
+            color = (0,255,0)
+        else:  # Más de 8 lados, probablemente un círculo
+            cuadrados.append(contour)
+            shape = "cuadrado"
+            color = (255,0,0)
+
+        
+        # Dibujar el contorno y la etiqueta
+        cv2.drawContours(draw_img, [contour], -1, color, 2)
+
+    imshow(draw_img)
+    return cuadrados
+
+
+dados = encontrar_cuadrados(thr_img)
+
+def clasificar_monedas(monedas) -> dict:
+    area_1_peso = 10000
+    area_50_cent = 5000
+    area_10_cent = 3000
+    dict_monedas = {}
+    total_monedas = 0
+    for moneda in monedas:
+        area = cv2.contourArea(moneda)
+        if area_1_peso-100<area<area_1_peso+100:
+            dict_monedas['1 peso'] += 1
+            total_monedas += 1
+        if area_50_cent-100 <area<area_50_cent+100:
+            dict_monedas['50 cent'] += 1
+            total_monedas += 0.5
+        else:
+            dict_monedas['10 cent'] +=1
+            total_monedas += 0.1
+    
+    return dict_monedas, total_monedas
+
+def contar_dados(dados) -> tuple[dict, int]:
+    dict_dados = {}
+    puntaje = 0
+    i = 1
+    for dado in dados:
+        d = thr_img[dado]
+        
+        circles = np.round(circles[0, :]).astype("int")
+
+        punto_dado = 0
+        for circle in circles:
+            r = circle[2]
+            area = np.pi * (r**2)
+            if area < 100:
+                continue
+            else:
+                punto_dado += 1
+        dict_dados[f"dado {i}"] = punto_dado
+        puntaje += punto_dado
+        i += 1
+    return dict_dados, puntaje
 
 
 
-# Detectar contornos
-contornos, _ = cv2.findContours(canny_close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-img_draw = cv2.cvtColor(canny_close.copy(), cv2.COLOR_GRAY2BGR)  # Convertir a BGR para dibujar en color
-cv2.drawContours(img_draw.copy(),contornos, -1, color = (255,0,0),thickness=3)
-imshow(img_draw)
+
+
