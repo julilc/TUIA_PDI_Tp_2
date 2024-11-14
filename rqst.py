@@ -2,6 +2,8 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+from ipywidgets import interact, IntSlider
+from PIL import Image 
 
 def binarize(img: np.array, tr: int = 150, maxv: int = 255) -> np.array:
     '''
