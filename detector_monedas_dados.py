@@ -5,11 +5,11 @@
 #Parte 0: carga de librerías e imágenes.
 from rqst import *
 
-img_1 = cv2.imread('data/monedas.jpg')
-img_1 = cv2.cvtColor(img_1,cv2.COLOR_BGR2HSV)
+img_1: np.array = cv2.imread('data/monedas.jpg')
+img_1: np.array = cv2.cvtColor(img_1,cv2.COLOR_BGR2HSV)
 
-img_1_gray = cv2.cvtColor(img_1.copy(),cv2.COLOR_HSV2BGR)
-img_1_gray = cv2.cvtColor(img_1_gray, cv2.COLOR_BGR2GRAY)
+img_1_gray: np.array = cv2.cvtColor(img_1.copy(),cv2.COLOR_HSV2BGR)
+img_1_gray: np.array = cv2.cvtColor(img_1_gray, cv2.COLOR_BGR2GRAY)
 
 imshow(img_1_gray)
 
@@ -121,10 +121,10 @@ def adjust_hsv_image_with_lightness_and_threshold(img: np.array, scale: float =0
 ### ya que está muy influenciada por su fondo uniforme y la incidencia de la luz, 
 ### también uniforme.
 
-mod_bgr , thr_img = adjust_hsv_image_with_lightness_and_threshold(img_1)
+mod_bgr, thr_img= adjust_hsv_image_with_lightness_and_threshold(img_1)
 
 #### Llegamos a que los valore más óptimos son:
-### hue 40, sat 18, v 9, l = 53 /**64/ 70, tr = 43
+### hue 26, sat 0, v 0, l = 0, tr = 63
 #### Obtenemos imagenes con dichos valores
 
 imshow(thr_img)
@@ -302,13 +302,13 @@ imshow(filtered_img)
 ##Primero aplicamos close para cerrar los dados, es decir que los puntos de los mismos
 ## queden de color blanco; y además también para completar mejor algunas monedas.
 
-s = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
-close_img =cv2.morphologyEx(filtered_img.copy(), cv2.MORPH_CLOSE, s, iterations=9)
+s: np.array = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
+close_img: np.array =cv2.morphologyEx(filtered_img.copy(), cv2.MORPH_CLOSE, s, iterations=9)
 imshow(close_img)
 
 ## Luego realizamos Open para dividir figuras que se juntaron debido a la operación anterior.
 
-open_img = cv2.morphologyEx(close_img.copy(), cv2.MORPH_OPEN, s, iterations=9)
+open_img: np.array = cv2.morphologyEx(close_img.copy(), cv2.MORPH_OPEN, s, iterations=9)
 
 imshow(open_img)
 ## Como se puede ver, se obtiene una imagen con sus figuras rellenas y separadas.
