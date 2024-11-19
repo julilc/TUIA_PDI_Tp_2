@@ -39,22 +39,29 @@ def encontrar_patente(img_bin, img):
     ext_contours, _ = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     img_out = img.copy()
     cv2.drawContours(img_out, ext_contours, -1, (255,0,0), 2)
+    height, width = img.shape[:2]
     #imshow(img_out, title="Contorno exterior")
-    posible_patente = []
+    posibles_patentes = []
     for c in ext_contours:
         # Aproximar el contorno a un polígono
         epsilon = 0.045 * cv2.arcLength(c, True)  # Ajusta 0.02 según lo necesario
         approx = cv2.approxPolyDP(c, epsilon, True)
         area = cv2.contourArea(c)
         # Verificar si el polígono tiene 4 vértices
-        if len(approx) == 4 and area > 400:
+        x, y, w, h = cv2.boundingRect(c)
+        if len(approx) == 4 and 42 < w < 103 and 11<h<46:
             # Dibujar el contorno del rectángulo
             cv2.drawContours(img_out, [c], -1, (0, 255, 0), 2)
-            
+            # Ajustar las coordenadas del recorte
+            y_start = max(0, y - int(h * 0.3))  # Margen superior (máximo 0)
+            y_end = min(height, y + h + int(h * 0.2))  # Margen inferior (máximo altura total)
+            patente = img[y_start:y_end, x:x+w]
+            imshow(patente)
             # Calcular el rectángulo delimitador y dibujarlo (opcional)
-            x, y, w, h = cv2.boundingRect(c)
+            
             cv2.rectangle(img_out, (x, y), (x + w, y + h), (0, 0, 255), 2)
-    imshow(img_out)
+    #imshow(img_out)
+    return posibles_patentes
 
 for i in range(len(PATENTES_PATH)):
     print(i)
@@ -79,4 +86,8 @@ for i in range(len(PATENTES_PATH)):
     img_open = cv2.morphologyEx(filtered_img.copy(), cv2.MORPH_OPEN, s, iterations= 3)
     #imshow(img_close)
     #imshow(img_open)
-    encontrar_patente(img_open, img_)
+    posibles_patentes = encontrar_patente(img_open, img_)
+
+### anchos: 44, 65,73 , 81, 74, 65, 102, 74,74, 67, 75 (min =44, max = 102)
+### altos:  13, 21, 22, 28, 35, 28, 45, 28, 33, 29, 28 (min = 13, max = 45)
+
