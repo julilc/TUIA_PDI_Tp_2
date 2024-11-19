@@ -35,19 +35,19 @@ img_gray = cv2.cvtColor(img_1.copy(),cv2.COLOR_BGR2GRAY)
 _,img_1_bin = cv2.threshold(img_gray.copy(),150,255, type=cv2.THRESH_BINARY)
 imshow(img_1_bin)
 
-def encontrar_patente(img):
-    ext_contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    img_out = cv2.merge((img,img,img))
+def encontrar_patente(img_bin, img):
+    ext_contours, _ = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    img_out = img.copy()
     cv2.drawContours(img_out, ext_contours, -1, (255,0,0), 2)
     #imshow(img_out, title="Contorno exterior")
     posible_patente = []
     for c in ext_contours:
         # Aproximar el contorno a un polígono
-        epsilon = 0.02 * cv2.arcLength(c, True)  # Ajusta 0.02 según lo necesario
+        epsilon = 0.045 * cv2.arcLength(c, True)  # Ajusta 0.02 según lo necesario
         approx = cv2.approxPolyDP(c, epsilon, True)
-        
+        area = cv2.contourArea(c)
         # Verificar si el polígono tiene 4 vértices
-        if len(approx) == 4:
+        if len(approx) == 4 and area > 400:
             # Dibujar el contorno del rectángulo
             cv2.drawContours(img_out, [c], -1, (0, 255, 0), 2)
             
@@ -59,7 +59,24 @@ def encontrar_patente(img):
 for i in range(len(PATENTES_PATH)):
     print(i)
     img_ = cv2.imread(PATENTES_PATH[i])
+    w = 4
+    h = 9
+    print(h,w)
     img_gray = cv2.cvtColor(img_.copy(),cv2.COLOR_BGR2GRAY)
-    _,img_1_bin = cv2.threshold(img_gray.copy(),150,255, type=cv2.THRESH_BINARY)
-    imshow(img_1_bin)
-    encontrar_patente(img_1_bin)
+    _,img_bin = cv2.threshold(img_gray.copy(),63,250, type=cv2.THRESH_BINARY)
+    img_canny = cv2.Canny(img_bin, 200,350)
+    #imshow(img_canny)
+    #imshow(img_canny)
+        
+    s = cv2.getStructuringElement(cv2.MORPH_RECT, (h,w))
+
+    img_close = cv2.morphologyEx(img_canny.copy(), cv2.MORPH_CLOSE, s, iterations=2)
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_close, connectivity=8)
+    filtered_img = np.zeros_like(img_close, dtype=np.uint8)
+    for i in range(1, num_labels):  # Omite el fondo (etiqueta 0)
+        if stats[i, cv2.CC_STAT_AREA] >= 1500:
+            filtered_img[labels == i] = 255
+    img_open = cv2.morphologyEx(filtered_img.copy(), cv2.MORPH_OPEN, s, iterations= 3)
+    #imshow(img_close)
+    #imshow(img_open)
+    encontrar_patente(img_open, img_)
