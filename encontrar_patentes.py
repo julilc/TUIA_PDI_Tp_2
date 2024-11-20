@@ -87,7 +87,33 @@ for i in range(len(PATENTES_PATH)):
     #imshow(img_close)
     #imshow(img_open)
     posibles_patentes = encontrar_patente(img_open, img_)
-
+print(posibles_patentes)
 ### anchos: 44, 65,73 , 81, 74, 65, 102, 74,74, 67, 75 (min =44, max = 102)
 ### altos:  13, 21, 22, 28, 35, 28, 45, 28, 33, 29, 28 (min = 13, max = 45)
 
+
+def filtrar_patentes_con_area(posibles_patentes):
+    # Lista para almacenar las patentes válidas
+    patentes_validas = []
+    
+    for patente_img in posibles_patentes:
+        img_gray = cv2.cvtColor(patente_img, cv2.COLOR_BGR2GRAY)
+        
+        _, img_bin = cv2.threshold(img_gray, 100, 255, cv2.THRESH_BINARY)
+        
+        contours, _ = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        print(contours)
+        # valid_contours = []
+        # for c in contours:
+        #     area = cv2.contourArea(c)
+        #     if area > 1 and area < 10:  
+        #         valid_contours.append(c)
+        
+        if contours > 6 and len(contours) < 10 :
+            patentes_validas.append(patente_img)
+        
+            plt.imshow(patente_img)
+            plt.show()
+
+    return patentes_validas
+filtrar_patentes_con_area(posibles_patentes)
