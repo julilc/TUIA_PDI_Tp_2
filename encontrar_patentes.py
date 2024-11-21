@@ -139,56 +139,6 @@ for i in range(1, num_labels):  # Comienza en 1 para omitir el fondo
 # Mostrar la imagen con las componentes conectadas dibujadas
 imshow(img_draw)
 
-# for foto in PATENTES_PATH:
-#     # Cargar la imagen en escala de grises
-#     imagen = cv2.imread(foto, cv2.IMREAD_GRAYSCALE)
-
-#     # Crear un elemento estructurante (por ejemplo, un rectángulo de 5x5)
-#     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (17, 17))
-
-#     # Aplicar la operación Black Hat
-#     black_hat = cv2.morphologyEx(imagen, cv2.MORPH_BLACKHAT, kernel)
-
-#     # Mostrar la imagen original y el resultado
-#     plt.figure(figsize=(10, 5))
-#     plt.subplot(1, 2, 1)
-#     plt.title("Imagen Original")
-#     plt.imshow(imagen, cmap='gray')
-
-#     plt.subplot(1, 2, 2)
-#     plt.title("Resultado Black Hat")
-#     plt.imshow(black_hat, cmap='gray')
-
-#     plt.show()
-
-# original_image = cv2.imread(foto, cv2.IMREAD_GRAYSCALE)
-
-# # Crear un elemento estructurante (similar al utilizado para Black Hat)
-# kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (17, 15))
-
-# # Realizar una apertura morfológica (erosión seguida de dilatación)
-# opened_image = cv2.morphologyEx(original_image, cv2.MORPH_OPEN, kernel)
-
-# # Restar la imagen abierta de la original
-# result_blackhat_like = cv2.subtract(original_image, opened_image)
-
-# # Mostrar los resultados
-# plt.figure(figsize=(10, 5))
-# plt.subplot(1, 2, 1)
-# plt.title("Imagen Original")
-# plt.imshow(original_image, cmap='gray')
-# plt.axis('off')
-
-# plt.subplot(1, 2, 2)
-# plt.title("Resultado Similar a Black Hat")
-# plt.imshow(result_blackhat_like, cmap='gray')
-# plt.axis('off')
-
-# plt.show()
-
-
-
-##FFFFFF##############################################################################################################################
 for foto in PATENTES_PATH:
     original_image = cv2.imread(foto, cv2.IMREAD_GRAYSCALE)
 
@@ -204,15 +154,15 @@ for foto in PATENTES_PATH:
     # calculamos la diferencia entre la imagen original y su versión suavizada para resaltar los detalles eliminados por la apertura, como bordes y pequeños objetos
     combined_result = cv2.absdiff(original_image, opened_image)
 
-    plt.figure(figsize=(10, 5))
-    plt.subplot(1, 2, 1)
-    plt.imshow(original_image, cmap='gray')
-    plt.title("Imagen Original")
-    plt.axis('off')
+    # plt.figure(figsize=(10, 5))
+    # plt.subplot(1, 2, 1)
+    # plt.imshow(original_image, cmap='gray')
+    # plt.title("Imagen Original")
+    # plt.axis('off')
 
-    plt.subplot(1, 2, 2)
-    plt.imshow(combined_result, cmap='gray')
-    plt.title("Imagen oara resaltar patentes")
-    plt.axis('off')
+    # plt.subplot(1, 2, 2)
+    # plt.imshow(combined_result, cmap='gray')
+    # plt.title("Imagen oara resaltar patentes")
+    # plt.axis('off')
 
-    plt.show()
+    # plt.show()

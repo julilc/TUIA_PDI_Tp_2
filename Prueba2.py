@@ -9,7 +9,7 @@ PATENTES_PATH
 
 # Parte 2: Procesar imágenes para detectar posibles patentes
 img_1 = cv2.imread(PATENTES_PATH[0])
-# imshow(img_1)
+imshow(img_1)
 
 #Definimos ventana deslizante donde buscar conjunto de letras
 w, h, m = img_1.shape
@@ -57,7 +57,7 @@ for i in range(len(PATENTES_PATH)):
     img_canny = cv2.Canny(img_bin, 200, 350)
         
     s = cv2.getStructuringElement(cv2.MORPH_RECT, (h,w))
-    img_close = cv2.morphologyEx(img_canny.copy(), cv2.MORPH_CLOSE, s, iterations=1)
+    img_close = cv2.morphologyEx(img_canny.copy(), cv2.MORPH_CLOSE, s, iterations=2)
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_close, connectivity=8)
     filtered_img = np.zeros_like(img_close, dtype=np.uint8)
     for i in range(1, num_labels):  # Omite el fondo (etiqueta 0)
@@ -67,46 +67,47 @@ for i in range(len(PATENTES_PATH)):
     posibles_patentes += encontrar_patente(img_open, img_)
 
 print(len(posibles_patentes))
-
 # Parte 3: Procesar una patente seleccionada para extraer caracteres
-# Convertir la patente a escala de grises
-pat = posibles_patentes[3]
-gris = cv2.cvtColor(pat, cv2.COLOR_BGR2GRAY)
+pats = [0,1,5,7,10,12,14,17,20,27,30]
+for paty in pats:
+    pat = posibles_patentes[paty]
+    # Convertir la patente a escala de grises
+    gris = cv2.cvtColor(pat, cv2.COLOR_BGR2GRAY)
 
-# Ecualizamos la imagen de manera local para resaltar mejor las letras
-m = cv2.getStructuringElement(cv2.MORPH_RECT, (30, 30))
-eq_img = cv2.equalizeHist(gris)
-imshow(eq_img)
+    # Ecualizamos la imagen de manera local para resaltar mejor las letras
+    m = cv2.getStructuringElement(cv2.MORPH_RECT, (30, 30))
+    eq_img = cv2.equalizeHist(gris)
+    # imshow(eq_img)
 
-# Aplicamos Black Hat para diferenciar mejor el fondo
-img_black = cv2.morphologyEx(eq_img, cv2.MORPH_BLACKHAT, m, iterations=9)
-imshow(img_black)
+    # Aplicamos Black Hat para diferenciar mejor el fondo
+    img_black = cv2.morphologyEx(eq_img, cv2.MORPH_BLACKHAT, m, iterations=9)
+    # imshow(img_black)
 
-# Binarizamos la imagen
-_, img_bin = cv2.threshold(img_black, 60, 255, cv2.THRESH_BINARY_INV)
-imshow(img_bin)
+    # Binarizamos la imagen
+    _, img_bin = cv2.threshold(img_black, 70, 255, cv2.THRESH_BINARY_INV)
+    # imshow(img_bin)
 
-# Quitamos áreas muy grandes que corresponden al borde de la patente
-num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_bin, connectivity=8)
-filtered_img = np.zeros_like(img_bin, dtype=np.uint8)
-for i in range(1, num_labels):  # Omite el fondo (etiqueta 0)
-    if stats[i, cv2.CC_STAT_AREA] >= 5 and stats[i, cv2.CC_STAT_AREA] <= 100:
-        filtered_img[labels == i] = 255
-imshow(filtered_img)
+    # Quitamos áreas muy grandes que corresponden al borde de la patente
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_bin, connectivity=8)
+    filtered_img = np.zeros_like(img_bin, dtype=np.uint8)
+    for i in range(1, num_labels):  # Omite el fondo (etiqueta 0)
+        if stats[i, cv2.CC_STAT_AREA] >= 5 and stats[i, cv2.CC_STAT_AREA] <= 100:
+            filtered_img[labels == i] = 255
+    # imshow(filtered_img)
 
-# Aplicamos dilatación con un kernel vertical para cerrar las letras
-e = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 2))
-img_erode = cv2.morphologyEx(filtered_img, cv2.MORPH_DILATE, kernel=e, iterations=2)
-imshow(img_erode)
+    # Aplicamos dilatación con un kernel vertical para cerrar las letras
+    e = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 2))
+    img_erode = cv2.morphologyEx(filtered_img, cv2.MORPH_DILATE, kernel=e, iterations=2)
+    imshow(img_erode)
 
-# Dibujar componentes conectadas
-img_draw = pat.copy()
-num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_erode, connectivity=4)
-for i in range(1, num_labels):  # Comienza en 1 para omitir el fondo
-    x, y, w, h, area = stats[i]  # Extraer información de la componente
-    # Dibujar rectángulo y centroide
-    color = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255))
-    cv2.rectangle(img_draw, (x, y), (x + w, y + h), color, 1)
+    # Dibujar componentes conectadas
+    img_draw = pat.copy()
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_erode, connectivity=4)
+    for i in range(1, num_labels):  # Comienza en 1 para omitir el fondo
+        x, y, w, h, area = stats[i]  # Extraer información de la componente
+        # Dibujar rectángulo y centroide
+        color = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255))
+        cv2.rectangle(img_draw, (x, y), (x + w, y + h), color, 1)
 
-# Mostrar la imagen con las componentes conectadas dibujadas
-imshow(img_draw)
+    # Mostrar la imagen con las componentes conectadas dibujadas
+    imshow(img_draw)
