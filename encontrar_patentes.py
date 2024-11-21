@@ -26,8 +26,8 @@ imshow(img_1)
 
 #Definimos ventana deslizante donde buscar conjunto de letras
 w, h, m = img_1.shape
-w = int(0.1)
-h = int(0.1)
+w = int(w * 0.1)
+h = int(h * 0.1)
 ventana = (w,h)
 
 #Función para obtener estructura de imagen
@@ -88,9 +88,9 @@ for i in range(len(PATENTES_PATH)):
     #imshow(img_open)
     posibles_patentes += encontrar_patente(img_open, img_)
 print(len(posibles_patentes))
-### anchos: 44, 65,73 , 81, 74, 65, 102, 74,74, 67, 75 (min =44, max = 102)
-### altos:  13, 21, 22, 28, 35, 28, 45, 28, 33, 29, 28 (min = 13, max = 45)
-
+### anchos:   44,   65,   73 , 81,     74,  65,  102,  74,   74,  67, 75 (min =44, max = 102)
+### altos:    13,   21,   22,  28,     35,  28,   45,  28,   33,  29, 28 (min = 13, max = 45)
+### division: 3.38, 3.09,3.31, 2.89, 2.11, 2.32, 2.26, 2.64, 2.24, 2.31, 2.67 (min = 2.11, max = 3.38)
 
 ########## PARTE 3: DIVIDIR PATENTE #######################################
 
@@ -100,16 +100,19 @@ pat = posibles_patentes[5]
 gris = cv2.cvtColor(pat, cv2.COLOR_BGR2GRAY)
 
 #Ecualizamos la imagen de manera local para resaltar mejor las letras
-m = cv2.getStructuringElement(cv2.MORPH_RECT, (30,30))
-eq_img = cv2.equalizeHist(gris, 4)
-imshow(eq_img)
+kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (19, 19))
 
-## Aplicamos blackhat para diferenciar mejor el fondo
-img_black = cv2.morphologyEx(eq_img, cv2.MORPH_BLACKHAT, m, iterations=9 )
-imshow(img_black)
-#binarizamos la imagen
-_, img_bin = cv2.threshold(img_black, 60, 255,  cv2.THRESH_BINARY_INV)
-imshow(img_bin)
+opened_image = cv2.morphologyEx(gris, cv2.MORPH_OPEN, kernel)
+
+morph_gradient = cv2.morphologyEx(gris, cv2.MORPH_GRADIENT, kernel)
+
+combined_result = cv2.absdiff(gris, opened_image)
+
+imshow(combined_result, title="Resultado combinado")
+
+_, img_bin = cv2.threshold(combined_result, 100, 255, cv2.THRESH_BINARY_INV)
+imshow(img_bin, title="Imagen binarizada")
+
 #quitamos areas muy grandes que corresponden al borde de la patente
 num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_bin, connectivity=8)
 filtered_img = np.zeros_like(img_bin, dtype=np.uint8)
@@ -118,10 +121,11 @@ for i in range(1, num_labels):  # Omite el fondo (etiqueta 0)
         filtered_img[labels == i] = 255
 imshow(filtered_img)
 
-#Aplicamos dilatación con un kernel vertical para cerrar las letras
+# Aplicamos dilatación con un kernel vertical para cerrar las letras
 e = cv2.getStructuringElement(cv2.MORPH_RECT, (1,2))
 img_erode = cv2.morphologyEx(filtered_img, cv2.MORPH_DILATE, kernel=e, iterations=2)
 imshow(img_erode)
+
 img_draw = pat.copy()
 
 #Dibujamos las componentes.
@@ -135,4 +139,80 @@ for i in range(1, num_labels):  # Comienza en 1 para omitir el fondo
 # Mostrar la imagen con las componentes conectadas dibujadas
 imshow(img_draw)
 
+# for foto in PATENTES_PATH:
+#     # Cargar la imagen en escala de grises
+#     imagen = cv2.imread(foto, cv2.IMREAD_GRAYSCALE)
 
+#     # Crear un elemento estructurante (por ejemplo, un rectángulo de 5x5)
+#     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (17, 17))
+
+#     # Aplicar la operación Black Hat
+#     black_hat = cv2.morphologyEx(imagen, cv2.MORPH_BLACKHAT, kernel)
+
+#     # Mostrar la imagen original y el resultado
+#     plt.figure(figsize=(10, 5))
+#     plt.subplot(1, 2, 1)
+#     plt.title("Imagen Original")
+#     plt.imshow(imagen, cmap='gray')
+
+#     plt.subplot(1, 2, 2)
+#     plt.title("Resultado Black Hat")
+#     plt.imshow(black_hat, cmap='gray')
+
+#     plt.show()
+
+# original_image = cv2.imread(foto, cv2.IMREAD_GRAYSCALE)
+
+# # Crear un elemento estructurante (similar al utilizado para Black Hat)
+# kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (17, 15))
+
+# # Realizar una apertura morfológica (erosión seguida de dilatación)
+# opened_image = cv2.morphologyEx(original_image, cv2.MORPH_OPEN, kernel)
+
+# # Restar la imagen abierta de la original
+# result_blackhat_like = cv2.subtract(original_image, opened_image)
+
+# # Mostrar los resultados
+# plt.figure(figsize=(10, 5))
+# plt.subplot(1, 2, 1)
+# plt.title("Imagen Original")
+# plt.imshow(original_image, cmap='gray')
+# plt.axis('off')
+
+# plt.subplot(1, 2, 2)
+# plt.title("Resultado Similar a Black Hat")
+# plt.imshow(result_blackhat_like, cmap='gray')
+# plt.axis('off')
+
+# plt.show()
+
+
+
+##FFFFFF##############################################################################################################################
+for foto in PATENTES_PATH:
+    original_image = cv2.imread(foto, cv2.IMREAD_GRAYSCALE)
+
+    # creamos un elemento estructurante, que es una matriz rectangular
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (19, 19))
+
+    # hacemos apertura, que consiste en aplicar erosión seguida de dilatación usando el kernel
+    opened_image = cv2.morphologyEx(original_image, cv2.MORPH_OPEN, kernel)
+
+    
+    # calculamos el gradiente morfológico, que resalta los bordes de los objetos al obtener la diferencia entre la dilatación y la erosión de la imagen original
+    morph_gradient = cv2.morphologyEx(original_image, cv2.MORPH_GRADIENT, kernel)
+    # calculamos la diferencia entre la imagen original y su versión suavizada para resaltar los detalles eliminados por la apertura, como bordes y pequeños objetos
+    combined_result = cv2.absdiff(original_image, opened_image)
+
+    plt.figure(figsize=(10, 5))
+    plt.subplot(1, 2, 1)
+    plt.imshow(original_image, cmap='gray')
+    plt.title("Imagen Original")
+    plt.axis('off')
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(combined_result, cmap='gray')
+    plt.title("Imagen oara resaltar patentes")
+    plt.axis('off')
+
+    plt.show()
