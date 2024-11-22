@@ -11,7 +11,6 @@ img_1: np.array = cv2.cvtColor(img_1,cv2.COLOR_BGR2HSV)
 img_1_gray: np.array = cv2.cvtColor(img_1.copy(),cv2.COLOR_HSV2BGR)
 img_1_gray: np.array = cv2.cvtColor(img_1_gray, cv2.COLOR_BGR2GRAY)
 
-imshow(img_1_gray)
 
 
 #### Parte 1: detectar círculos y cuadrados
@@ -19,91 +18,70 @@ imshow(img_1_gray)
 
 
 ### Funcion a Utilizar para ajustar imagen original.
-
-def adjust_hsv_image_with_lightness_and_threshold(img: np.array, scale: float =0.5):
+def adjust_hsv_image_with_lightness_and_threshold(img: np.array, scale: float = 0.5):
     """
-    Función para ajustar los valores HSVL de una imagen en tiempo real utilizando OpenCV.
-    También muestra la versión binarizada de la imagen modificada en una ventana separada,
-    con la posibilidad de ajustar el umbral dinámicamente.
-    
-    Parámetros:
-    - img (numpy.ndarray): Imagen en formato BGR (como la cargada con cv2.imread).
-    - scale (float): Factor de escala para redimensionar la imagen y ajustar la ventana.
-    
+    Ajusta los valores HSVL de una imagen en tiempo real utilizando OpenCV.
+    También devuelve los valores finales de H, S, V, L y Threshold.
+
     Retorna:
-    modified_bgr (numpy.ndarray): Imagen con ajustes de HSVL.
-    thresh_image (numpy.ndarray): Imagen binarizada con el umbral ajustado.
+    - modified_bgr (numpy.ndarray): Imagen con ajustes de HSVL.
+    - thresh_image (numpy.ndarray): Imagen binarizada con el umbral ajustado.
+    - h, s, v, l, t (int): Valores finales de Hue, Saturation, Value, Lightness y Threshold.
     """
     # Redimensionar la imagen original según el factor de escala
     resized_img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
     hsv_img = cv2.cvtColor(resized_img, cv2.COLOR_BGR2HSV)
-
-    
     hsv_img = cv2.blur(hsv_img, (15, 15))  # Aplicamos un suavizado para evitar ruidos
 
-    # Crear ventana para la imagen modificada y su versión binarizada
+    # Crear ventanas
     cv2.namedWindow("Modified Image", cv2.WINDOW_NORMAL)
     cv2.namedWindow("Thresholded Image", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("Adjustments", cv2.WINDOW_NORMAL)  # Crear la ventana de ajustes
+    cv2.namedWindow("Adjustments", cv2.WINDOW_NORMAL)
 
-    # Redimensionar las ventanas
-    cv2.resizeWindow("Modified Image", int(resized_img.shape[1] * 2), int(resized_img.shape[0]))
-    cv2.resizeWindow("Thresholded Image", int(resized_img.shape[1] * 2), int(resized_img.shape[0]))
-    cv2.resizeWindow("Adjustments", 400, 200)  # Tamaño para la ventana de ajustes
+    # Contenedor para almacenar los valores de los sliders
+    slider_values = {'h': 0, 's': 0, 'v': 0, 'l': 0, 't': 0}
 
-    # Variables para almacenar las imágenes modificadas y binarizadas
+    # Variables para almacenar las imágenes
     modified_bgr = None
     thresh_image = None
 
     # Función de actualización para aplicar cambios
     def update_image(x):
-        nonlocal modified_bgr, thresh_image  # Usamos las variables definidas fuera de la función
+        nonlocal modified_bgr, thresh_image
 
-        # Obtener valores de H, S, V, L y Threshold de los deslizadores
-        h = cv2.getTrackbarPos('Hue', 'Adjustments')
-        s = cv2.getTrackbarPos('Saturation', 'Adjustments') 
-        v = cv2.getTrackbarPos('Value', 'Adjustments') 
-        l = cv2.getTrackbarPos('Lightness', 'Adjustments')# Ajuste para Lightness
-        threshold_value = cv2.getTrackbarPos('Threshold', 'Adjustments')  # Valor del umbral
+        # Actualizar valores de los sliders
+        slider_values['h'] = cv2.getTrackbarPos('Hue', 'Adjustments')
+        slider_values['s'] = cv2.getTrackbarPos('Saturation', 'Adjustments')
+        slider_values['v'] = cv2.getTrackbarPos('Value', 'Adjustments')
+        slider_values['l'] = cv2.getTrackbarPos('Lightness', 'Adjustments')
+        slider_values['t'] = cv2.getTrackbarPos('Threshold', 'Adjustments')
 
         # Aplicar ajustes a la copia de la imagen
         modified_hsv = hsv_img.copy()
-
-        # Ajuste del valor del Hue, asegurándose de que esté dentro de su rango [0, 179]
-        modified_hsv[:, :, 0] = np.clip(hsv_img[:, :, 0] + h, 0, 179)  # Hue
-
-        # Ajuste de Saturation, asegurándose de que esté dentro del rango [0, 255]
-        modified_hsv[:, :, 1] = np.clip(cv2.blur(hsv_img[:, :, 1] + s , (5,5)), 0, 255)  # Saturation
-
-        # Ajuste de Value, asegurándose de que esté dentro del rango [0, 255]
-        modified_hsv[:, :, 2] = np.clip(hsv_img[:, :, 2] + v, 0, 255)  # Value
-
-        # Aplicar ajuste de Lightness sobre el canal Value (V), asegurándose de no exceder los límites
-        modified_hsv[:, :, 2] = np.clip(cv2.blur(modified_hsv[:, :, 2] + l, (5,5)), 0, 255)  # Modificar solo el valor (V)
+        modified_hsv[:, :, 0] = np.clip(hsv_img[:, :, 0] + slider_values['h'], 0, 179)
+        modified_hsv[:, :, 1] = np.clip(cv2.blur(hsv_img[:, :, 1] + slider_values['s'], (5, 5)), 0, 255)
+        modified_hsv[:, :, 2] = np.clip(hsv_img[:, :, 2] + slider_values['v'], 0, 255)
+        modified_hsv[:, :, 2] = np.clip(cv2.blur(modified_hsv[:, :, 2] + slider_values['l'], (5, 5)), 0, 255)
 
         # Convertir la imagen modificada de HSV a BGR
         modified_bgr = cv2.cvtColor(modified_hsv, cv2.COLOR_HSV2BGR)
 
-        # Convertir la imagen modificada a escala de grises
+        # Convertir a escala de grises y aplicar umbral
         gray_image = cv2.cvtColor(modified_bgr, cv2.COLOR_BGR2GRAY)
+        _, thresh_image = cv2.threshold(gray_image, slider_values['t'], 255, cv2.THRESH_BINARY)
 
-        # Aplicar umbralización (Threshold) para obtener una imagen binaria con el valor ajustado
-        _, thresh_image = cv2.threshold(gray_image, threshold_value, 255, cv2.THRESH_BINARY)
-
-        # Mostrar la imagen modificada en la ventana "Modified Image"
+        # Mostrar las imágenes
         cv2.imshow('Modified Image', modified_bgr)
-
-        # Mostrar la imagen binarizada en la ventana "Thresholded Image"
         cv2.imshow('Thresholded Image', thresh_image)
 
-    # Crear deslizadores para Hue, Saturation, Value, Lightness y Threshold con valores iniciales
+    # Crear sliders
     cv2.createTrackbar('Hue', 'Adjustments', 50, 100, update_image)
     cv2.createTrackbar('Saturation', 'Adjustments', 50, 100, update_image)
     cv2.createTrackbar('Value', 'Adjustments', 50, 100, update_image)
-    cv2.createTrackbar('Lightness', 'Adjustments', 50, 100, update_image)  # Slider para Lightness
-    cv2.createTrackbar('Threshold', 'Adjustments', 127, 255, update_image)  # Slider para Threshold
+    cv2.createTrackbar('Lightness', 'Adjustments', 50, 100, update_image)
+    cv2.createTrackbar('Threshold', 'Adjustments', 127, 255, update_image)
 
-    # Llamar a la función de actualización para mostrar la imagen original al inicio
+    # Inicializar ventana
     update_image(0)
 
     # Mantener la ventana abierta hasta que se presione ESC
@@ -113,21 +91,8 @@ def adjust_hsv_image_with_lightness_and_threshold(img: np.array, scale: float =0
 
     cv2.destroyAllWindows()
 
-    # Al presionar ESC, devolver las imágenes modificadas
-    return modified_bgr, thresh_image
-
-
-### Debemos modificar la imagen original para que la detección se pueda realizar
-### ya que está muy influenciada por su fondo uniforme y la incidencia de la luz, 
-### también uniforme.
-
-mod_bgr, thr_img= adjust_hsv_image_with_lightness_and_threshold(img_1)
-
-#### Llegamos a que los valore más óptimos son:
-### hue 26, sat 0, v 0, l = 0, tr = 63
-#### Obtenemos imagenes con dichos valores
-
-imshow(thr_img)
+    # Retornar la imagen modificada, la binarizada y los valores finales
+    return modified_bgr, thresh_image, slider_values['h'], slider_values['s'], slider_values['v'], slider_values['l'], slider_values['t']
 
 ##Encontramos figuras ###
 
@@ -189,18 +154,13 @@ def find_and_draw_circles(thresh_image, dp_ = 1.2, minD = 30, p1 = 50, p2 = 100,
                 cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 0, 0), 4)
         
         # Mostrar la imagen con los círculos dibujados
-        imshow(result_image)
+        #imshow(result_image)
     
     else:
         print("No se encontraron círculos en la imagen.")
 
     return result_image, circles
 
-### Para detectar las monedas usamos simplemente la imagen en escala de grises 
-### ya que las detecta sim problemas
-imshow(img_1_gray)
-
-result_image, monedas = find_and_draw_circles(img_1_gray,p1 = 100, p2 = 150, minR=70, minD=100, maxR=200)
 
 
 ### Si bien el approach anterior sirve para detectar las monedas, no así los dados
@@ -235,7 +195,7 @@ def encontrar_cuadrados_y_circulos(img: np.array, min_fp : int = 0.06, max_fp : 
     # Detectar bordes con Canny
     edges = cv2.Canny(img, 50, 150)
 
-    imshow(edges)
+    #imshow(edges)
 
     # Encontrar contornos
     contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -270,62 +230,8 @@ def encontrar_cuadrados_y_circulos(img: np.array, min_fp : int = 0.06, max_fp : 
         cv2.putText(draw_img, f'{shape}Area: {area:.2f}', (x-40, y-10),
             cv2.FONT_HERSHEY_SIMPLEX, 1, color, 3)
 
-    imshow(draw_img)
+    #imshow(draw_img)
     return cuadrados, monedas
-
-
-### Antes de llamar a la función para detectar cuadrados y círculos
-# (o dados y monedas en nuestro problema), se debe realizar morfología en las imagenes
-
-imshow(thr_img)
-
-## Se observa que la imagen presenta "ruido", definido este como aquellas zonas 
-## que no son ni dados ni monedas.
-
-## Realizamos un filtrado según el área para descartar la mayor parte de este ruido.
-## De no hacer esto, lugo al aplicar morfología dicho ruido podría unir figuras, cosa
-## que complicaría la posterior clasificación.
-
-num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(thr_img, connectivity=8)
-
-# Crea una máscara para conservar solo los componentes con área mayor o igual a 100 píxeles
-filtered_img = np.zeros_like(thr_img, dtype=np.uint8)
-for i in range(1, num_labels):  # Omite el fondo (etiqueta 0)
-    if stats[i, cv2.CC_STAT_AREA] >= 1300:
-        filtered_img[labels == i] = 255  # Mantiene el componente en la imagen filtrada
-
-
-imshow(filtered_img)
-
-##Se obtiene una imagen con menor ruido donde se puede ahora aplicar morfología.
-
-##Primero aplicamos close para cerrar los dados, es decir que los puntos de los mismos
-## queden de color blanco; y además también para completar mejor algunas monedas.
-
-s: np.array = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
-close_img: np.array =cv2.morphologyEx(filtered_img.copy(), cv2.MORPH_CLOSE, s, iterations=9)
-imshow(close_img)
-
-## Luego realizamos Open para dividir figuras que se juntaron debido a la operación anterior.
-
-open_img: np.array = cv2.morphologyEx(close_img.copy(), cv2.MORPH_OPEN, s, iterations=9)
-
-imshow(open_img)
-## Como se puede ver, se obtiene una imagen con sus figuras rellenas y separadas.
-
-##Llamamos a la función para encontrar las monedas y dados pasándole esta última imagen.
-
-dados, monedas = encontrar_cuadrados_y_circulos(open_img, min_fp = 0.063, max_fp = 0.075)
-
-### De aquí obtenemos también el área de cada moneda aproximadamente
-## moneda 1 peso: 62000, , 66100, , 68785, 68844
-## moneda 10 centavos: 45506, 44929, 36924, 45169, 46366,45983, 47094,
-##                      44395, 44998
-## Moneda 50 centavos: 80663, 79740, 81846
-
-##Las de 1 peso tienen areas desde 62000 a 69000 aprox, siendo su punto medio 65500
-## Las de 10 centavos tienen areas desde 36000 a 47100 aprox, siendo su punto medio 41500
-### Las de 50 centavos, van desde 79000 a 82000, siendo su punto medio 80500
 
 
 ## Parte 2: clasificar monedas.
@@ -377,14 +283,11 @@ def clasificar_monedas(monedas: list[tuple]) -> dict:
 
     return dict_monedas, total_dinero
 
-dic_monedas , total_dinero = clasificar_monedas(monedas)
-
-print(dic_monedas, total_dinero)
 
 
 ## Parte 3: contar puntos de dados.
 
-def contar_dados(dados) -> tuple[dict, int]:
+def contar_dados(dados, thr_img) -> tuple[dict, int]:
     '''
     #### Esta función devuelve para cada dado su puntaje y
     #### el puntaje total obtenido por todos los dados.
@@ -439,13 +342,120 @@ def contar_dados(dados) -> tuple[dict, int]:
                 cv2.circle(img_draw, (x, y), 2, (0, 0, 255), 1)
         
                 punto_dado += 1
-        imshow(img_draw)
+        #imshow(img_draw)
         dict_dados[f"dado {i}"] = punto_dado
         puntaje += punto_dado
         i += 1
     return dict_dados, puntaje
 
-contar_dados(dados)
+def user():
 
+
+    path_img = input('ingrese la dirección donde se encuentra guardada la imagen:')
+
+    img: np.array = cv2.imread(path_img)  # Carga la imagen en BGR
+    
+    ######Aplica las transformaciones en los valores necesarias##########
+    # Convertir la imagen de BGR a HSV
+
+    hsv_img: np.array = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    resized_img = cv2.resize(hsv_img, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_LINEAR)
+    hsv_img = cv2.cvtColor(resized_img, cv2.COLOR_BGR2HSV)
+    hsv_img = cv2.blur(hsv_img, (15, 15))
+
+    
+    
+    ### Ajustes manuales según los valores óptimos obtenidos
+    modified_hsv = hsv_img.copy()
+
+    # Ajuste del valor del Hue, asegurándose de que esté dentro de su rango [0, 179]
+    modified_hsv[:, :, 0] = np.clip(hsv_img[:, :, 0] + 26, 0, 179)  # Hue
+
+    # Ajuste de Saturation, asegurándose de que esté dentro del rango [0, 255]
+    modified_hsv[:, :, 1] = np.clip(cv2.blur(hsv_img[:, :, 1] + 0, (5, 5)), 0, 255)  # Saturation
+
+    # Ajuste de Value, asegurándose de que esté dentro del rango [0, 255]
+    modified_hsv[:, :, 2] = np.clip(hsv_img[:, :, 2] + 0, 0, 255)  # Value
+
+    # Aplicar ajuste de Lightness sobre el canal Value (V), asegurándose de no exceder los límites
+    modified_hsv[:, :, 2] = np.clip(cv2.blur(modified_hsv[:, :, 2] + 0, (5, 5)), 0, 255)  # Lightness
+
+    # Convertir la imagen modificada de HSV a BGR
+    modified_bgr = cv2.cvtColor(modified_hsv, cv2.COLOR_HSV2BGR)
+    # Convertir la imagen modificada a escala de grises
+    gray_image = cv2.cvtColor(modified_bgr, cv2.COLOR_BGR2GRAY)
+
+    # Aplicar umbralización (Threshold) para obtener una imagen binaria con el valor ajustado
+    _, thresh_image = cv2.threshold(gray_image, 63, 255, cv2.THRESH_BINARY)
+
+    #imshow(thresh_image)
+    ######Encontrar formas ##########
+    ## Se observa que la imagen presenta "ruido", definido este como aquellas zonas 
+    ## que no son ni dados ni monedas.
+
+    ## Realizamos un filtrado según el área para descartar la mayor parte de este ruido.
+    ## De no hacer esto, lugo al aplicar morfología dicho ruido podría unir figuras, cosa
+    ## que complicaría la posterior clasificación.
+
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(thresh_image, connectivity=8)
+
+    # Crea una máscara para conservar solo los componentes con área mayor o igual a 100 píxeles
+    filtered_img = np.zeros_like(thresh_image, dtype=np.uint8)
+    for i in range(1, num_labels):  # Omite el fondo (etiqueta 0)
+        if stats[i, cv2.CC_STAT_AREA] >= 1300:
+            filtered_img[labels == i] = 255  # Mantiene el componente en la imagen filtrada
+
+
+    #imshow(filtered_img)
+
+    ##Se obtiene una imagen con menor ruido donde se puede ahora aplicar morfología.
+
+    ##Primero aplicamos close para cerrar los dados, es decir que los puntos de los mismos
+    ## queden de color blanco; y además también para completar mejor algunas monedas.
+
+    s: np.array = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
+    close_img: np.array =cv2.morphologyEx(filtered_img.copy(), cv2.MORPH_CLOSE, s, iterations=9)
+    #imshow(close_img)
+
+    ## Luego realizamos Open para dividir figuras que se juntaron debido a la operación anterior.
+
+    open_img: np.array = cv2.morphologyEx(close_img.copy(), cv2.MORPH_OPEN, s, iterations=9)
+
+    #imshow(open_img)
+    ## Como se puede ver, se obtiene una imagen con sus figuras rellenas y separadas.
+
+    ##Llamamos a la función para encontrar las monedas y dados pasándole esta última imagen.
+
+    dados, monedas = encontrar_cuadrados_y_circulos(open_img, min_fp = 0.063, max_fp = 0.075)
+
+    ### De aquí obtenemos también el área de cada moneda aproximadamente
+    ## moneda 1 peso: 62000, , 66100, , 68785, 68844
+    ## moneda 10 centavos: 45506, 44929, 36924, 45169, 46366,45983, 47094,
+    ##                      44395, 44998
+    ## Moneda 50 centavos: 80663, 79740, 81846
+
+    ##Las de 1 peso tienen areas desde 62000 a 69000 aprox, siendo su punto medio 65500
+    ## Las de 10 centavos tienen areas desde 36000 a 47100 aprox, siendo su punto medio 41500
+    ### Las de 50 centavos, van desde 79000 a 82000, siendo su punto medio 80500
+
+    ################### CLASIFICAR MONEDAS ##########################################
+    
+    dic_monedas , total_dinero = clasificar_monedas(monedas)
+
+    ################### CONTAR DADOS ################################################
+    dict_dados, puntaje = contar_dados(dados, thresh_image)
+    
+    ########## RESULTADOS ##############################
+    print('Las monedas encontradas fueron')
+    for key, value in dic_monedas.items():
+        print(f'Tipo de moneda: {key}, total encontradas: {value}')
+    print(f'El monto total es de ${total_dinero}')
+    print('Los puntos por dado fueron')
+    for key, value in dict_dados.items():
+        print(f'{key}, total puntos: {value}')
+    print(f'El puntaje total es {puntaje}')
+
+
+user()
 
 
