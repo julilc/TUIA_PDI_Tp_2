@@ -7,11 +7,13 @@ def encontrar_rectangulos(img_bin, img):
     cv2.drawContours(img_out, ext_contours, -1, (255,0,0), 2)
     height, width = img.shape[:2]
     posibles_patentes = []
+
     for c in ext_contours:
+
         # Aproximar el contorno a un polígono
         epsilon = 0.045 * cv2.arcLength(c, True)
         approx = cv2.approxPolyDP(c, epsilon, True)
-        area = cv2.contourArea(c)
+
         # Verificar si el polígono tiene 4 vértices
         x, y, w, h = cv2.boundingRect(c)
         if len(approx) == 4 and 42 < w < 103 and 11 < h < 46:
@@ -24,6 +26,7 @@ def encontrar_rectangulos(img_bin, img):
             posibles_patentes.append(patente)
             cv2.rectangle(img_out, (x, y), (x + w, y + h), (0, 0, 255), 2)
     # imshow(img_out)
+
     return posibles_patentes
 
 
@@ -33,10 +36,9 @@ def encontrar_patente(posibles_pat : list[np.array], img_original: np.array)->bo
     #Para cada rectángulo en la imagen obtenemos sus componentes
     for i in range(len(posibles_pat)):
         pat = posibles_pat[i]
-        # Convertir la patente a escala de grises
+
         gris = cv2.cvtColor(pat, cv2.COLOR_BGR2GRAY)
 
-        # Ecualizamos la imagen de manera local para resaltar mejor las letras
         m = cv2.getStructuringElement(cv2.MORPH_RECT, (40, 40))
         eq_img = cv2.equalizeHist(gris)
         # imshow(eq_img)
@@ -45,13 +47,11 @@ def encontrar_patente(posibles_pat : list[np.array], img_original: np.array)->bo
         img_black = cv2.morphologyEx(eq_img, cv2.MORPH_BLACKHAT, m, iterations=9)
         # imshow(img_black)
 
-        # Binarizamos la imagen
         _, img_bin = cv2.threshold(img_black, 70, 255, cv2.THRESH_BINARY_INV)
         # imshow(img_bin)
         
         # Quitamos áreas muy grandes que corresponden al borde de la patente
         num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_bin, connectivity=8)
-        
         
         filtered_img = np.zeros_like(img_bin, dtype=np.uint8)
 
@@ -59,8 +59,6 @@ def encontrar_patente(posibles_pat : list[np.array], img_original: np.array)->bo
         for i in range(1, num_labels):  # Omite el fondo (etiqueta 0)
             if stats[i, cv2.CC_STAT_AREA] >= 10 and stats[i, cv2.CC_STAT_AREA] <= 100:
                 filtered_img[labels == i] = 255
-               
-        
         #imshow(filtered_img)
 
         # Aplicamos dilatación con un kernel vertical para cerrar las letras
@@ -83,7 +81,7 @@ def encontrar_patente(posibles_pat : list[np.array], img_original: np.array)->bo
         hs = stats[1:, cv2.CC_STAT_HEIGHT] 
         median_altura = np.median(hs)
         ys = stats[1:, cv2.CC_STAT_TOP]
-        median_y =np.median(ys)
+        median_y = np.median(ys)
         anchos = stats[1:, cv2.CC_STAT_WIDTH]  # Omitimos la etiqueta 0 (el fondo)
         mediana_anchos = np.median(anchos)
         
@@ -91,26 +89,24 @@ def encontrar_patente(posibles_pat : list[np.array], img_original: np.array)->bo
         #cercanas a la mediana serán letras.
         
         caracteres = []
-
+        caracteres_coordenadas = []
         for i in range(1, num_labels):  
             x, y, w, h, area = stats[i]
-
             #Chequeamos si esa componente es un caracter por su cercanía a las medianas.  
             if mediana_anchos-5< w < mediana_anchos+10 and median_altura - 7 < h < median_altura + 5 and median_y - 15 < y < median_y + 15:
-                caracteres.append(pat[0:pat.shape[0], x:x+w])#Sumamos en 1 a la cantidad de caracteres
+                caracteres.append(pat[0:pat.shape[0], x:x+w])
+                caracteres_coordenadas.append((x, pat[0:pat.shape[0], x:x+w]))
                 color = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255))
                 cv2.rectangle(img_draw, (x, y), (x + w, y + h), color, 1)
-            
+        
+        
         # Mostrar la imagen con los caracteres dibujados
         if len(caracteres) == 6:
             # Debe mostrar la imagen 'Pat' arriba y abajo en una fila los 6 caracteres que están en la lista 'caracteres'
             # Crear un espacio en blanco para separar los caracteres
             # Ordenar las componentes por la coordenada x (posición 'LEFT' del rectángulo)
-            ordenadas = sorted(range(len(caracteres)), key=lambda i: stats[i + 1, cv2.CC_STAT_LEFT])
-
-            # Crear una lista de caracteres ordenados
-            caracteres = [caracteres[i] for i in ordenadas]
-
+            caracteres_ordenados = sorted(caracteres_coordenadas, key=lambda char: char[0])
+            caracteres = [char[1] for char in caracteres_ordenados]
             altura_caracteres = caracteres[0].shape[0]
             espacio_img = np.ones((altura_caracteres, 4, 3), dtype=np.uint8) * 255  # Espacio en blanco con 3 canales
 
@@ -144,8 +140,7 @@ def encontrar_patente(posibles_pat : list[np.array], img_original: np.array)->bo
 def detectar_patentes(img:np.array)-> np.array:
 
     posibles_patentes = []    
-    w = 4
-    h = 9
+    w, h= 4, 9
     
     img_gray = cv2.cvtColor(img.copy(), cv2.COLOR_BGR2GRAY)
     _, img_bin = cv2.threshold(img_gray.copy(), 63, 250, type=cv2.THRESH_BINARY)
@@ -174,9 +169,18 @@ def detectar_patentes(img:np.array)-> np.array:
         print('Patente no encontrada')
        
 
-def user()->np.array:
-    path_img = input('ingrese la ubicación de su imagen: ')
+def user(path_img=None)->np.array:
+    if path_img == None:
+        path_img = input('ingrese la ubicación de su imagen: ')
     img = cv2.imread(path_img)
     detectar_patentes(img)
-
 user()
+# for i in range(1,10):
+#     print(i)
+#     user(f'C:/Users/David/PDI/TUIA_PDI_Tp_2/data/img0{i}.png')
+    
+
+# for i in range(10,13):
+#     print(i)
+#     user(f'C:/Users/David/PDI/TUIA_PDI_Tp_2/data/img{i}.png')
+    
