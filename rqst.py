@@ -25,7 +25,8 @@ def imshow(img, new_fig=True, title=None, color_img=False, blocking=False, color
         plt.imshow(img)
     else:
         plt.imshow(img, cmap='gray')
-    #plt.title(title)
+    if title:
+        plt.title(title)
     if not ticks:
         plt.xticks([]), plt.yticks([])
     if colorbar:

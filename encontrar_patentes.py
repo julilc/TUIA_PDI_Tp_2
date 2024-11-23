@@ -27,7 +27,7 @@ def encontrar_rectangulos(img_bin, img):
     return posibles_patentes
 
 
-def encontrar_patente(posibles_pat : list[np.array])->bool:
+def encontrar_patente(posibles_pat : list[np.array], img_original: np.array)->bool:
     se_encontro_patente = False
     
     #Para cada rectángulo en la imagen obtenemos sus componentes
@@ -135,7 +135,8 @@ def encontrar_patente(posibles_pat : list[np.array])->bool:
             imagen_final = np.vstack([pat_resized, espacio_patente_caracteres, fila_caracteres])  # Añadimos el espacio entre la patente y los caracteres
 
             # Mostrar la imagen combinada
-            imshow(imagen_final, blocking=True)
+            imshow(img_original, title='Imagen recibida', blocking= True)
+            imshow(imagen_final, blocking=True, title='Patente y caracteres detectados')
             se_encontro_patente = True
     return se_encontro_patente
     
@@ -167,7 +168,7 @@ def detectar_patentes(img:np.array)-> np.array:
     #Lllamamos a función que detecta rectángulos
     posibles_patentes += encontrar_rectangulos(img_open, img)
 
-    patente_encontrada = encontrar_patente(posibles_pat= posibles_patentes)
+    patente_encontrada = encontrar_patente(posibles_pat= posibles_patentes, img_original = img)
     
     if not patente_encontrada:
         print('Patente no encontrada')
