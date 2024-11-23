@@ -1,168 +1,181 @@
-########################################################################
-################### Consigna 1: detectar patentes ######################
-########################################################################
-
-### Path de trabajo
-# 1: obtener estructura de imagen.
-# 2: identificar parte que es letra.
-# 3: detectar patente mediante ventana deslizante que
-#   contenga 6 caracteres dentro.
-# 4: recortar patente y letras.
-
-
-#Parte 0: carga de librerías e imágenes.
 from rqst import *
 import os
 
-PATENTES_PATH: list = [f"data/img0{i}.png" for i in range(1,10)]
-for i in range(10,13):
-    PATENTES_PATH.append(f"data/img{i}.png")
-PATENTES_PATH
-
-img_1 = cv2.imread(PATENTES_PATH[0])
-imshow(img_1)
-
-# Parte 2: capturar letras.
-
-#Definimos ventana deslizante donde buscar conjunto de letras
-w, h, m = img_1.shape
-w = int(w * 0.1)
-h = int(h * 0.1)
-ventana = (w,h)
-
-#Función para obtener estructura de imagen
-img_gray = cv2.cvtColor(img_1.copy(),cv2.COLOR_BGR2GRAY)
-_,img_1_bin = cv2.threshold(img_gray.copy(),150,255, type=cv2.THRESH_BINARY)
-imshow(img_1_bin)
-
-def encontrar_patente(img_bin, img):
+def encontrar_rectangulos(img_bin, img):
     ext_contours, _ = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     img_out = img.copy()
     cv2.drawContours(img_out, ext_contours, -1, (255,0,0), 2)
     height, width = img.shape[:2]
-    #imshow(img_out, title="Contorno exterior")
     posibles_patentes = []
     for c in ext_contours:
         # Aproximar el contorno a un polígono
-        epsilon = 0.045 * cv2.arcLength(c, True)  # Ajusta 0.02 según lo necesario
+        epsilon = 0.045 * cv2.arcLength(c, True)
         approx = cv2.approxPolyDP(c, epsilon, True)
         area = cv2.contourArea(c)
         # Verificar si el polígono tiene 4 vértices
         x, y, w, h = cv2.boundingRect(c)
-        if len(approx) == 4 and 42 < w < 103 and 11<h<46:
+        if len(approx) == 4 and 42 < w < 103 and 11 < h < 46:
             # Dibujar el contorno del rectángulo
             cv2.drawContours(img_out, [c], -1, (0, 255, 0), 2)
             # Ajustar las coordenadas del recorte
-            y_start = max(0, y - int(h * 0.3))  # Margen superior (máximo 0)
-            y_end = min(height, y + h + int(h * 0.2))  # Margen inferior (máximo altura total)
+            y_start = max(0, y - int(h * 0.3))
+            y_end = min(height, y + h + int(h * 0.2))
             patente = img[y_start:y_end, x:x+w]
             posibles_patentes.append(patente)
-            # Calcular el rectángulo delimitador y dibujarlo (opcional)            
             cv2.rectangle(img_out, (x, y), (x + w, y + h), (0, 0, 255), 2)
-    imshow(img_out)
+    # imshow(img_out)
     return posibles_patentes
 
-posibles_patentes = []
-for i in range(len(PATENTES_PATH)):
-    print(i)
-    img_ = cv2.imread(PATENTES_PATH[i])
+
+def encontrar_patente(posibles_pat : list[np.array])->bool:
+    se_encontro_patente = False
+    
+    #Para cada rectángulo en la imagen obtenemos sus componentes
+    for i in range(len(posibles_pat)):
+        pat = posibles_pat[i]
+        # Convertir la patente a escala de grises
+        gris = cv2.cvtColor(pat, cv2.COLOR_BGR2GRAY)
+
+        # Ecualizamos la imagen de manera local para resaltar mejor las letras
+        m = cv2.getStructuringElement(cv2.MORPH_RECT, (40, 40))
+        eq_img = cv2.equalizeHist(gris)
+        # imshow(eq_img)
+
+        # Aplicamos Black Hat para diferenciar mejor el fondo
+        img_black = cv2.morphologyEx(eq_img, cv2.MORPH_BLACKHAT, m, iterations=9)
+        # imshow(img_black)
+
+        # Binarizamos la imagen
+        _, img_bin = cv2.threshold(img_black, 70, 255, cv2.THRESH_BINARY_INV)
+        # imshow(img_bin)
+        
+        # Quitamos áreas muy grandes que corresponden al borde de la patente
+        num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_bin, connectivity=8)
+        
+        
+        filtered_img = np.zeros_like(img_bin, dtype=np.uint8)
+
+        #Obtenemos las componentes conectadas y aplicamos filtro por área
+        for i in range(1, num_labels):  # Omite el fondo (etiqueta 0)
+            if stats[i, cv2.CC_STAT_AREA] >= 10 and stats[i, cv2.CC_STAT_AREA] <= 100:
+                filtered_img[labels == i] = 255
+               
+        
+        #imshow(filtered_img)
+
+        # Aplicamos dilatación con un kernel vertical para cerrar las letras
+        e = cv2.getStructuringElement(cv2.MORPH_RECT, (1,2))
+        img_dil = cv2.morphologyEx(filtered_img, cv2.MORPH_DILATE, kernel=e, iterations=1)
+
+        #Utilizamos erosión para obtener una imagen con aquellas áreas que están uniendo las letras    
+        kernel_horizontal = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+        img_erode = cv2.morphologyEx(img_dil, cv2.MORPH_ERODE, kernel=kernel_horizontal, iterations=1)
+        
+        #Le quitamos a la imagen, las áreas que unen las letras
+        filtered_img -=  img_erode
+        #imshow(filtered_img)
+        
+        # Detectamos componentes conectadas
+        img_draw = pat.copy()
+        num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(filtered_img, connectivity=8)
+        
+        #Obtenemos la mediana de altura, posición y, y anchura
+        hs = stats[1:, cv2.CC_STAT_HEIGHT] 
+        median_altura = np.median(hs)
+        ys = stats[1:, cv2.CC_STAT_TOP]
+        median_y =np.median(ys)
+        anchos = stats[1:, cv2.CC_STAT_WIDTH]  # Omitimos la etiqueta 0 (el fondo)
+        mediana_anchos = np.median(anchos)
+        
+        #Como los caracteres de las patentes están en tamaños similares, aquellas componentes que estén 
+        #cercanas a la mediana serán letras.
+        
+        caracteres = []
+
+        for i in range(1, num_labels):  
+            x, y, w, h, area = stats[i]
+
+            #Chequeamos si esa componente es un caracter por su cercanía a las medianas.  
+            if mediana_anchos-5< w < mediana_anchos+10 and median_altura - 7 < h < median_altura + 5 and median_y - 15 < y < median_y + 15:
+                caracteres.append(pat[0:pat.shape[0], x:x+w])#Sumamos en 1 a la cantidad de caracteres
+                color = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255))
+                cv2.rectangle(img_draw, (x, y), (x + w, y + h), color, 1)
+            
+        # Mostrar la imagen con los caracteres dibujados
+        if len(caracteres) == 6:
+            # Debe mostrar la imagen 'Pat' arriba y abajo en una fila los 6 caracteres que están en la lista 'caracteres'
+            # Crear un espacio en blanco para separar los caracteres
+            # Ordenar las componentes por la coordenada x (posición 'LEFT' del rectángulo)
+            ordenadas = sorted(range(len(caracteres)), key=lambda i: stats[i + 1, cv2.CC_STAT_LEFT])
+
+            # Crear una lista de caracteres ordenados
+            caracteres = [caracteres[i] for i in ordenadas]
+
+            altura_caracteres = caracteres[0].shape[0]
+            espacio_img = np.ones((altura_caracteres, 4, 3), dtype=np.uint8) * 255  # Espacio en blanco con 3 canales
+
+            # Concatenar caracteres con espacios
+            fila_caracteres = []
+            for i, char in enumerate(caracteres):
+                fila_caracteres.append(char)
+                if i < len(caracteres) - 1:  # No añadir espacio después del último carácter
+                    fila_caracteres.append(espacio_img)
+
+            # Concatenar horizontalmente los caracteres
+            fila_caracteres = np.hstack(fila_caracteres)
+
+            # Asegurarse de que la patente tenga el mismo ancho que la fila de caracteres
+            ancho_fila = fila_caracteres.shape[1]
+            pat_resized = cv2.resize(pat, (ancho_fila, pat.shape[0]), interpolation=cv2.INTER_LINEAR)
+
+            # Crear un espacio entre la patente y los caracteres (por ejemplo, 20 píxeles de altura)
+            espacio_patente_caracteres = np.ones((3, pat_resized.shape[1], 3), dtype=np.uint8) * 255  # Espacio blanco de 20 píxeles
+
+            # Combinar la patente con los caracteres
+            imagen_final = np.vstack([pat_resized, espacio_patente_caracteres, fila_caracteres])  # Añadimos el espacio entre la patente y los caracteres
+
+            # Mostrar la imagen combinada
+            imshow(imagen_final, blocking=True)
+            se_encontro_patente = True
+    return se_encontro_patente
+    
+
+def detectar_patentes(img:np.array)-> np.array:
+
+    posibles_patentes = []    
     w = 4
     h = 9
-    print(h,w)
-    img_gray = cv2.cvtColor(img_.copy(),cv2.COLOR_BGR2GRAY)
-    _,img_bin = cv2.threshold(img_gray.copy(),63,250, type=cv2.THRESH_BINARY)
-    img_canny = cv2.Canny(img_bin, 200,350)
-    #imshow(img_canny)
-    #imshow(img_canny)
-        
+    
+    img_gray = cv2.cvtColor(img.copy(), cv2.COLOR_BGR2GRAY)
+    _, img_bin = cv2.threshold(img_gray.copy(), 63, 250, type=cv2.THRESH_BINARY)
+    img_canny = cv2.Canny(img_bin, 200, 350)
+    
+    #Aplicamos Close sobre Canny para unir la líneas cortadas    
     s = cv2.getStructuringElement(cv2.MORPH_RECT, (h,w))
-
     img_close = cv2.morphologyEx(img_canny.copy(), cv2.MORPH_CLOSE, s, iterations=2)
+    
+    #Detectamos las componentes conectadas y filtramos por aquellas con area chica
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_close, connectivity=8)
     filtered_img = np.zeros_like(img_close, dtype=np.uint8)
     for i in range(1, num_labels):  # Omite el fondo (etiqueta 0)
         if stats[i, cv2.CC_STAT_AREA] >= 1500:
             filtered_img[labels == i] = 255
-    img_open = cv2.morphologyEx(filtered_img.copy(), cv2.MORPH_OPEN, s, iterations= 3)
-    #imshow(img_close)
-    #imshow(img_open)
-    posibles_patentes += encontrar_patente(img_open, img_)
-print(len(posibles_patentes))
-### anchos:   44,   65,   73 , 81,     74,  65,  102,  74,   74,  67, 75 (min =44, max = 102)
-### altos:    13,   21,   22,  28,     35,  28,   45,  28,   33,  29, 28 (min = 13, max = 45)
-### division: 3.38, 3.09,3.31, 2.89, 2.11, 2.32, 2.26, 2.64, 2.24, 2.31, 2.67 (min = 2.11, max = 3.38)
 
-########## PARTE 3: DIVIDIR PATENTE #######################################
-
-pat = posibles_patentes[5]
-
-
-gris = cv2.cvtColor(pat, cv2.COLOR_BGR2GRAY)
-
-#Ecualizamos la imagen de manera local para resaltar mejor las letras
-kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (19, 19))
-
-opened_image = cv2.morphologyEx(gris, cv2.MORPH_OPEN, kernel)
-
-morph_gradient = cv2.morphologyEx(gris, cv2.MORPH_GRADIENT, kernel)
-
-combined_result = cv2.absdiff(gris, opened_image)
-
-imshow(combined_result, title="Resultado combinado")
-
-_, img_bin = cv2.threshold(combined_result, 100, 255, cv2.THRESH_BINARY_INV)
-imshow(img_bin, title="Imagen binarizada")
-
-#quitamos areas muy grandes que corresponden al borde de la patente
-num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_bin, connectivity=8)
-filtered_img = np.zeros_like(img_bin, dtype=np.uint8)
-for i in range(1, num_labels):  # Omite el fondo (etiqueta 0)
-    if stats[i, cv2.CC_STAT_AREA] >= 5 and stats[i, cv2.CC_STAT_AREA] <= 100:
-        filtered_img[labels == i] = 255
-imshow(filtered_img)
-
-# Aplicamos dilatación con un kernel vertical para cerrar las letras
-e = cv2.getStructuringElement(cv2.MORPH_RECT, (1,2))
-img_erode = cv2.morphologyEx(filtered_img, cv2.MORPH_DILATE, kernel=e, iterations=2)
-imshow(img_erode)
-
-img_draw = pat.copy()
-
-#Dibujamos las componentes.
-num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_erode, connectivity=4)
-for i in range(1, num_labels):  # Comienza en 1 para omitir el fondo
-    x, y, w, h, area = stats[i]  # Extraer información de la componente
-    # Dibujar rectángulo y centroide
-    color = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255))
-    cv2.rectangle(img_draw, (x, y), (x + w, y + h), color, 1)
-
-# Mostrar la imagen con las componentes conectadas dibujadas
-imshow(img_draw)
-
-for foto in PATENTES_PATH:
-    original_image = cv2.imread(foto, cv2.IMREAD_GRAYSCALE)
-
-    # creamos un elemento estructurante, que es una matriz rectangular
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (19, 19))
-
-    # hacemos apertura, que consiste en aplicar erosión seguida de dilatación usando el kernel
-    opened_image = cv2.morphologyEx(original_image, cv2.MORPH_OPEN, kernel)
-
+    #Realizamos Open para dividir conexiones erróneas producto de Close.
+    img_open = cv2.morphologyEx(filtered_img.copy(), cv2.MORPH_OPEN, s, iterations=3)
     
-    # calculamos el gradiente morfológico, que resalta los bordes de los objetos al obtener la diferencia entre la dilatación y la erosión de la imagen original
-    morph_gradient = cv2.morphologyEx(original_image, cv2.MORPH_GRADIENT, kernel)
-    # calculamos la diferencia entre la imagen original y su versión suavizada para resaltar los detalles eliminados por la apertura, como bordes y pequeños objetos
-    combined_result = cv2.absdiff(original_image, opened_image)
+    #Lllamamos a función que detecta rectángulos
+    posibles_patentes += encontrar_rectangulos(img_open, img)
 
-    # plt.figure(figsize=(10, 5))
-    # plt.subplot(1, 2, 1)
-    # plt.imshow(original_image, cmap='gray')
-    # plt.title("Imagen Original")
-    # plt.axis('off')
+    patente_encontrada = encontrar_patente(posibles_pat= posibles_patentes)
+    
+    if not patente_encontrada:
+        print('Patente no encontrada')
+       
 
-    # plt.subplot(1, 2, 2)
-    # plt.imshow(combined_result, cmap='gray')
-    # plt.title("Imagen oara resaltar patentes")
-    # plt.axis('off')
+def user()->np.array:
+    path_img = input('ingrese la ubicación de su imagen: ')
+    img = cv2.imread(path_img)
+    detectar_patentes(img)
 
-    # plt.show()
+user()
