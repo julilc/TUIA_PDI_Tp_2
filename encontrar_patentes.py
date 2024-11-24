@@ -1,7 +1,33 @@
 from rqst import *
-import os
 
-def encontrar_rectangulos(img_bin, img):
+
+def encontrar_rectangulos(img_bin: np.array, img:np.array)-> list[np.array]:
+    '''
+    Esta función recibe una imagen binaria y detecta en ella rectángulos que
+    cumplan con especificaciones de ancho y alto, de forma tal que sean
+    rectángulos horizontales similares a patentes.
+    -------------------------------------------------------------------------
+    ### Parámetros:
+        - img_bin: imagen binaria donde buscar rectángulos.
+        - img: imagen original de la cual se recortará el rectángulo obtenido.
+    
+    --------------------------------------------------------------------------
+
+    ### Devuelve: 
+        - posibles_patentes [list]: lista que contiene rectángulos recortados de
+        la imagen original que pueden ser posibles patentes.
+
+    ---------------------------------------------------------------------------
+
+    ## Procedimiento:
+        1. Extrae los contornos de la imagen binaria.
+        2. Aproxima los rectángulos en la imagen.
+        3. Filtra los rectángulos por ancho, alto (42 < w < 103 and 11 < h < 46)
+        y cantidad de vértices (4)
+        4. Los recorta de la imagen original y los agrega a la lista 
+        "posibles_patentes".
+        5. Retorna la lista "posibles_patentes".
+    '''
     ext_contours, _ = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     img_out = img.copy()
     cv2.drawContours(img_out, ext_contours, -1, (255,0,0), 2)
@@ -31,6 +57,49 @@ def encontrar_rectangulos(img_bin, img):
 
 
 def encontrar_patente(posibles_pat : list[np.array], img_original: np.array)->bool:
+    '''
+    Esta función recibe una lista de imágenes que son consideradas "posibles patentes"
+    de allí detecta aquellas que lo son y recorta sus caracteres.
+
+    ----------------------------------------------------------------------------------
+    ### Parámetros:
+        - posibles_pat [list[np.array]]: lista con imágenes que son consideradas
+        posibles patentes.
+        - img_original: imagen original para fines meramente ilustrativos.
+    
+    ----------------------------------------------------------------------------------
+
+    ## Retorna:
+        -bool : retorna True o False dependiendo de si se encontró o no una patente
+        en la lista de posibles patentes.
+
+    -----------------------------------------------------------------------------------
+
+    ## Procedimiento:
+        Para cada posible patente:
+        1. Se la pasas a escala de grises.
+        2. Se le aplica ecualización local.
+        3. Se realiza blackhat con kernel (40,40) para diferenciar el fondo de las letras
+        de forma más clara.
+        4. se obtiene imagen binaria.
+        5. Se filtra aquellas areas pequeñas de la imagen obteniendo una imagen filtrada.
+        6. Se aplica pequeña dilatación para unir letras.
+        7. Se aplica erosión a la imagen dilatada para obtener una imagen con aquellas 
+        áreas que están uniendo las letras (bordes por ejemplo).
+        8. Se le quita a la imagen filtrada la imagen erosionada separando correctamente
+        las letras.
+        9. Se detectan componentes conectadas y, si la imagen posee 6 componentes conectadas
+        similares tanto en anchura, altura como en posición y:
+            i. Se muestra la imagen original con el título "imagen recibida".
+            ii. Se muestra una imagen con la patente recortada y los 6 caracteres debajo con
+            el título "Patente y caracteres encontrados".
+        10. Retorna False si no se encontró patente en la lista y True en caso de que sí. 
+
+
+    '''
+    
+    
+    
     se_encontro_patente = False
     
     #Para cada rectángulo en la imagen obtenemos sus componentes
@@ -137,7 +206,40 @@ def encontrar_patente(posibles_pat : list[np.array], img_original: np.array)->bo
     return se_encontro_patente
     
 
-def detectar_patentes(img:np.array)-> np.array:
+def detectar_patentes(img:np.array)-> None:
+    '''
+    Esta función recibe una imagen, le aplica transformaciones morfológicas y
+    ejecuta las funciones 'encontrar_rectangulos' y 'encontrar_patente';
+    en caso de que esta ultima retorne False, imprime 'patente no encontrada'
+
+    --------------------------------------------------------------------------
+    ### Parámetros:
+        - img: imagen en formato bgr.
+    
+    --------------------------------------------------------------------------
+    ### Retorna:
+        None
+    
+    --------------------------------------------------------------------------
+    ### Procedimiento:
+        1. define ancho y alto del kernel.
+        2. Toma la imagen y la pasa a escala de grises.
+        3. Binariza la imagen.
+        4. Obtiene el Canny.
+        5. Aplica clausura sobre la imagen Canny para unir lineas.
+        6. Obtiene componentes conectadas y filtra la imagen con clausura para
+        eliminar componentes con áreas muy pequeñas.
+        7. aplica apertura sobre la imagen filtrada para dividir uniones no
+        deseadas.
+        8. Llama a la función encontrar_rectangulos y le pasa como argumento la
+        imagen filtrada y la original.
+        9. Con las posibles patentes encontradas en la llamada anterior, ejecuto
+        ejecuta la función patente_encontrada pasándolas como argumento.
+        10. Si de la llamada anterior recibe como retorno un False, imprime 'Patente
+        no encontrada'
+    
+    
+    '''
 
     posibles_patentes = []    
     w, h= 4, 9
@@ -169,18 +271,28 @@ def detectar_patentes(img:np.array)-> np.array:
         print('Patente no encontrada')
        
 
-def user(path_img=None)->np.array:
-    if path_img == None:
-        path_img = input('ingrese la ubicación de su imagen: ')
+def user()->np.array:
+    '''
+    Esta funcion se comunica con el usuario solicitandole la dirección
+    de la misma, carga la imagen en bgr y llama a la función detectar_patentes
+    pasándola como argumento.
+
+    --------------------------------------------------------------------------
+    ### Parámetros:
+        None
+
+    --------------------------------------------------------------------------
+    ### Retorna:
+        None
+    
+    --------------------------------------------------------------------------
+    ### Procedimiento:
+        1. Le solicita la ubicación del archivo al usuario.
+        2. Carga la imagen en BGR.
+        3. La pasa como argumento a la función detectar_patentes.
+
+    '''
+    path_img = input('ingrese la ubicación de su imagen: ')
     img = cv2.imread(path_img)
     detectar_patentes(img)
 user()
-# for i in range(1,10):
-#     print(i)
-#     user(f'C:/Users/David/PDI/TUIA_PDI_Tp_2/data/img0{i}.png')
-    
-
-# for i in range(10,13):
-#     print(i)
-#     user(f'C:/Users/David/PDI/TUIA_PDI_Tp_2/data/img{i}.png')
-    
