@@ -168,10 +168,10 @@ def find_and_draw_circles(thresh_image, dp_ = 1.2, minD = 30, p1 = 50, p2 = 100,
 
 def encontrar_cuadrados_y_circulos(img: np.array, min_fp : int = 0.06, max_fp : int = 0.08)-> tuple[list, list]:
     '''
-    #### Esta función encuentra cuadrados y círculos en una imagen, utilizando el factor
-    #### de forma para diferenciar los segundos de los primeros.
-
+    Esta función encuentra cuadrados y círculos en una imagen, utilizando el factor
+    de forma para diferenciar los segundos de los primeros.
     --------------------------------------------------------
+    
     ### Parámetros:
         - img: imagen donde detectar las figuras.
         - min_fp: tolerancia mínima de factor de forma para círculo.
@@ -289,9 +289,8 @@ def clasificar_monedas(monedas: list[tuple]) -> dict:
 
 def contar_dados(dados, thr_img) -> tuple[dict, int]:
     '''
-    #### Esta función devuelve para cada dado su puntaje y
-    #### el puntaje total obtenido por todos los dados.
-    
+    Esta función devuelve para cada dado su puntaje y
+    el puntaje total obtenido por todos los dados.
     -------------------------------------------------------
 
     #### Parámetros:
