@@ -2,16 +2,8 @@
 ### Consigna 1: detectar monedas y dados con sus respectivos valores ###
 ########################################################################
 
-#Parte 0: carga de librerías e imágenes.
+#Parte 0: carga de librerías.
 from rqst import *
-
-img_1: np.array = cv2.imread('data/monedas.jpg')
-img_1: np.array = cv2.cvtColor(img_1,cv2.COLOR_BGR2HSV)
-
-img_1_gray: np.array = cv2.cvtColor(img_1.copy(),cv2.COLOR_HSV2BGR)
-img_1_gray: np.array = cv2.cvtColor(img_1_gray, cv2.COLOR_BGR2GRAY)
-
-
 
 #### Parte 1: detectar círculos y cuadrados
 ### (o monedas y dados en el contexto del problema)
@@ -107,7 +99,7 @@ def find_and_draw_circles(thresh_image, dp_ = 1.2, minD = 30, p1 = 50, p2 = 100,
         - dp _ : valor de dp para HoughCircles.
         - minD: distancia mínima entre un centroide de un círculo y otro.
         - p1: parámetro 1 de HoughCircles.
-        - p2: parámetro 2 de HoughCircles a mayor número, más exigenete en la detección de círculos.
+        - p2: parámetro 2 de HoughCircles a mayor número, más exigente en la detección de círculos.
         - minR: radio mínimo de círculo.
         - maxR: radio máximo de círculo.
 
@@ -164,7 +156,7 @@ def find_and_draw_circles(thresh_image, dp_ = 1.2, minD = 30, p1 = 50, p2 = 100,
 
 
 ### Si bien el approach anterior sirve para detectar las monedas, no así los dados
-### por lo tanto hacemos una función que decte ambos
+### por lo tanto hacemos una función que detecte ambos
 
 def encontrar_cuadrados_y_circulos(img: np.array, min_fp : int = 0.06, max_fp : int = 0.08)-> tuple[list, list]:
     '''
@@ -184,7 +176,7 @@ def encontrar_cuadrados_y_circulos(img: np.array, min_fp : int = 0.06, max_fp : 
 
     ---------------------------------------------------------
     ### Procedimiento:
-        1. Obtiene l binarización de la imagen.
+        1. Obtiene la binarización de la imagen.
         2. Detecta bordes con Canny.
         3. Encuentra los contornos.
         4. Mediante el factor de forma del círculo clasifica los contornos,
@@ -393,12 +385,12 @@ def user():
     ## que no son ni dados ni monedas.
 
     ## Realizamos un filtrado según el área para descartar la mayor parte de este ruido.
-    ## De no hacer esto, lugo al aplicar morfología dicho ruido podría unir figuras, cosa
+    ## De no hacer esto, luego al aplicar morfología dicho ruido podría unir figuras, cosa
     ## que complicaría la posterior clasificación.
 
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(thresh_image, connectivity=8)
 
-    # Crea una máscara para conservar solo los componentes con área mayor o igual a 100 píxeles
+    # Crea una máscara para conservar solo los componentes con área mayor o igual a 1300 píxeles
     filtered_img = np.zeros_like(thresh_image, dtype=np.uint8)
     for i in range(1, num_labels):  # Omite el fondo (etiqueta 0)
         if stats[i, cv2.CC_STAT_AREA] >= 1300:

@@ -258,7 +258,7 @@ def detectar_patentes(img:np.array)-> None:
     #Realizamos Open para dividir conexiones erróneas producto de Close.
     img_open = cv2.morphologyEx(filtered_img.copy(), cv2.MORPH_OPEN, s, iterations=3)
     #imshow(img_open, title='4. Imagen filtrada con apertura')
-    #Lllamamos a función que detecta rectángulos
+    #Llamamos a función que detecta rectángulos
     posibles_patentes += encontrar_rectangulos(img_open, img)
 
     patente_encontrada = encontrar_patente(posibles_pat= posibles_patentes, img_original = img)
