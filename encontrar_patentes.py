@@ -152,7 +152,6 @@ def encontrar_patente(posibles_pat : list[np.array], img_original: np.array)->bo
             
             #Chequeamos si esa componente es un caracter por su cercanía a las medianas.  
             if mediana_anchos-3< w < mediana_anchos+10 and median_altura - 7 < h < median_altura + 5 and median_y - 15 < y < median_y + 15:
-                print(i,h, median_altura)
                 caracteres.append(pat[0:pat.shape[0], x:x+w])
                 caracteres_coordenadas.append((x, pat[0:pat.shape[0], x:x+w]))
                 color = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255))
@@ -205,7 +204,7 @@ def detectar_patentes(img:np.array)-> None:
 
     --------------------------------------------------------------------------
     ### Parámetros:
-        - img: imagen en formato bgr.
+        - img: imagen en formato rgb.
     
     --------------------------------------------------------------------------
     ### Retorna:
@@ -270,9 +269,7 @@ def detectar_patentes(img:np.array)-> None:
 
 def user()->np.array:
     '''
-    Esta funcion se comunica con el usuario solicitandole la dirección
-    de la misma, carga la imagen en bgr y llama a la función detectar_patentes
-    pasándola como argumento.
+    Esta funcion py 
 
     --------------------------------------------------------------------------
     ### Parámetros:
